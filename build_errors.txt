@@ -1,0 +1,26 @@
+﻿src/components/ProtectedRoute.tsx(4,10): error TS1484: 'Role' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/staff/Dashboard.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/staff/MenuManager.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/staff/MenuManager.tsx(3,10): error TS1484: 'MenuItem' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/staff/MenuManager.tsx(4,38): error TS6133: 'X' is declared but its value is never read.
+src/pages/staff/OrderManager.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/staff/OrderManager.tsx(3,10): error TS1484: 'OrderStatus' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/staff/OrderManager.tsx(4,10): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/staff/OrderManager.tsx(4,51): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/pages/staff/OrderManager.tsx(23,49): error TS6133: 'users' is declared but its value is never read.
+src/pages/staff/SeatOversight.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/staff/SeatOversight.tsx(3,10): error TS1484: 'TimeSlot' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/staff/SeatOversight.tsx(20,9): error TS6133: 'bookedSeatNumbers' is declared but its value is never read.
+src/pages/student/Dashboard.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/student/Menu.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/student/Menu.tsx(3,10): error TS1484: 'MenuItem' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/student/OrderHistory.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/student/SeatBooking.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/student/SeatBooking.tsx(3,10): error TS1484: 'TimeSlot' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/student/SeatBooking.tsx(149,20): error TS2304: Cannot find name 'Calendar'.
+src/store/useAppStore.ts(3,10): error TS1484: 'User' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/store/useAppStore.ts(3,16): error TS1484: 'MenuItem' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/store/useAppStore.ts(3,26): error TS1484: 'Order' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/store/useAppStore.ts(3,33): error TS1484: 'SeatBooking' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/store/useAppStore.ts(3,46): error TS1484: 'OrderItem' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/store/useAppStore.ts(40,11): error TS6133: 'get' is declared but its value is never read.

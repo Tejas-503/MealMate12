@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  :root {
+    --color-bg: #fafaf9; /* stone-50 */
+    --color-surface: #ffffff; /* white */
+    --color-primary: #ea580c; /* orange-600 */
+    --color-primary-dark: #c2410c; /* orange-700 */
+    --color-accent: #f59e0b; /* amber-500 */
+    --color-text-main: #1c1917; /* stone-900 */
+    --color-text-muted: #78716c; /* stone-500 */
+    --color-white: #1c1917; /* Used for text-white/overlays over light */
+    --color-black: #ffffff; /* Used for bg-black/overlays over light */
+  }
+  
+  .dark {
+    --color-bg: #0c0a09; /* stone-950 */
+    --color-surface: #1c1917; /* stone-900 */
+    --color-primary: #f97316; /* orange-500 */
+    --color-primary-dark: #ea580c; /* orange-600 */
+    --color-accent: #fbbf24; /* amber-400 */
+    --color-text-main: #fafaf9; /* stone-50 */
+    --color-text-muted: #a8a29e; /* stone-400 */
+    --color-white: #ffffff; /* pure white */
+    --color-black: #000000; /* pure black */
+  }
+
+  body {
+    @apply bg-background text-textMain min-h-screen antialiased selection:bg-primary selection:text-white font-sans transition-colors duration-500;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl transition-colors duration-500;
+  }
+  
+  .btn-primary {
+    @apply bg-primary hover:bg-primaryDark text-white font-medium py-2 px-4 rounded-xl transition-all duration-200 active:scale-95 shadow-lg shadow-primary/20 hover:shadow-primary/40;
+  }
+
+  .btn-secondary {
+    @apply bg-white/5 hover:bg-white/10 text-white font-medium py-2 px-4 rounded-xl transition-all duration-200 active:scale-95 border border-white/10;
+  }
+
+  .input-field {
+    @apply w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-200;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e1e2d;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2d2d42;
+}
