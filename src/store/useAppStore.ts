@@ -21,7 +21,22 @@ interface AppState {
   deleteMenuItem: (id: string) => Promise<void>;
   
   orders: Order[];
-  placeOrder: (userId: string, items: OrderItem[], totalAmount: number, paymentMethod: Order['paymentMethod'], paymentStatus: Order['paymentStatus'], status: Order['status']) => Promise<void>;
+  placeOrder: (
+    userId: string, 
+    items: OrderItem[], 
+    totalAmount: number, 
+    paymentMethod: Order['paymentMethod'], 
+    paymentStatus: Order['paymentStatus'], 
+    status: Order['status'],
+    extras?: {
+      orderType?: Order['orderType'];
+      orderedBy?: Order['orderedBy'];
+      building?: string;
+      roomNumber?: string;
+      locationType?: string;
+      notes?: string;
+    }
+  ) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   updateOrderPaymentAndStatus: (orderId: string, status: Order['status'], paymentStatus: Order['paymentStatus']) => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
@@ -134,7 +149,13 @@ export const useAppStore = create<AppState>()(
                 paymentMethod: d.payment_method,
                 paymentStatus: d.payment_status,
                 totalAmount: Number(d.total_amount),
-                createdAt: d.created_at
+                createdAt: d.created_at,
+                orderType: d.order_type,
+                orderedBy: d.ordered_by,
+                building: d.building,
+                roomNumber: d.room_number,
+                locationType: d.location_type,
+                notes: d.notes
               }))
             });
           }
@@ -186,14 +207,20 @@ export const useAppStore = create<AppState>()(
       },
       
       orders: [],
-      placeOrder: async (userId, items, totalAmount, paymentMethod, paymentStatus, status) => {
+      placeOrder: async (userId, items, totalAmount, paymentMethod, paymentStatus, status, extras) => {
         await supabase.from('orders').insert({
           user_id: userId,
           items,
           payment_method: paymentMethod,
           payment_status: paymentStatus,
           status: status,
-          total_amount: totalAmount
+          total_amount: totalAmount,
+          order_type: extras?.orderType || 'canteen_pickup',
+          ordered_by: extras?.orderedBy || 'student',
+          building: extras?.building,
+          room_number: extras?.roomNumber,
+          location_type: extras?.locationType,
+          notes: extras?.notes
         });
         await get().fetchInitialData();
       },

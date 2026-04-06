@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { TrendingUp, Users, ShoppingBag, Calendar, DollarSign, CheckCircle2, BarChart3, Power } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
   const { orders, bookings, isCanteenOpen, toggleCanteenStatus } = useAppStore();
@@ -21,6 +22,37 @@ const Dashboard = () => {
   const filteredBookings = useMemo(() => {
     return bookings.filter(b => b.status === 'active');
   }, [bookings]);
+
+  const chartData = useMemo(() => {
+    if (filteredOrders.length === 0) return [];
+    
+    // Sort orders chronologically to ensure the chart timeline goes from oldest to newest if they are on same day.
+    const sortedOrders = [...filteredOrders].sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    
+    const aggregated: Record<string, {name: string, revenue: number, orders: number}> = {};
+    
+    sortedOrders.forEach(o => {
+      if (o.status === 'cancelled') return;
+      const date = new Date(o.createdAt);
+      let key = '';
+      
+      if (dateFilter === 'today') {
+        key = `${date.getHours().toString().padStart(2, '0')}:00`;
+      } else if (dateFilter === 'week') {
+        key = date.toLocaleDateString('en-US', { weekday: 'short' });
+      } else {
+        key = `${date.getDate()} ${date.toLocaleDateString('en-US', { month: 'short' })}`;
+      }
+      
+      if (!aggregated[key]) {
+        aggregated[key] = { name: key, revenue: 0, orders: 0 };
+      }
+      aggregated[key].revenue += o.totalAmount;
+      aggregated[key].orders += 1;
+    });
+    
+    return Object.values(aggregated);
+  }, [filteredOrders, dateFilter]);
 
   const totalRevenue = filteredOrders.reduce((acc, o) => acc + (o.status !== 'cancelled' ? o.totalAmount : 0), 0);
   const totalOrdersCount = filteredOrders.length;
@@ -109,12 +141,36 @@ const Dashboard = () => {
          </div>
       </div>
       
-      {/* Chart Space Placeholder */}
-      <div className="glass-panel p-8 min-h-[400px] flex items-center justify-center border-dashed border-2 border-white/5">
-         <div className="text-center text-textMuted max-w-sm">
-           <BarChart3 size={48} className="mx-auto mb-4 opacity-50" />
-           <p>Detailed charting options would go here, displaying revenue trends over {dateFilter}.</p>
-         </div>
+      {/* Chart */}
+      <div className="glass-panel p-6 h-[400px] flex flex-col">
+        <h2 className="text-xl font-bold mb-6">Revenue Overview</h2>
+        {chartData.length > 0 ? (
+          <div className="flex-1 w-full min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-textMuted border-dashed border-2 border-white/5 rounded-xl">
+             <BarChart3 size={48} className="mb-4 opacity-50" />
+             <p>No data available for {dateFilter}.</p>
+          </div>
+        )}
       </div>
     </div>
   );

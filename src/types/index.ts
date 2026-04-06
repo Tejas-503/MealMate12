@@ -22,6 +22,9 @@ export type OrderStatus = 'awaiting_payment' | 'pending' | 'preparing' | 'ready'
 export type PaymentMethod = 'counter' | 'qr' | 'card';
 export type PaymentStatus = 'pending' | 'completed';
 
+export type OrderType = 'canteen_pickup' | 'seat_delivery' | 'classroom_delivery';
+export type OrderedBy = 'student' | 'teacher';
+
 export interface OrderItem {
   menuItemId: string;
   quantity: number;
@@ -37,6 +40,12 @@ export interface Order {
   paymentStatus: PaymentStatus;
   totalAmount: number;
   createdAt: string;
+  orderType?: OrderType;
+  orderedBy?: OrderedBy;
+  building?: string;
+  roomNumber?: string;
+  locationType?: string;
+  notes?: string;
 }
 
 export type TimeSlot = '9-12' | '1-3' | '4-5:30';

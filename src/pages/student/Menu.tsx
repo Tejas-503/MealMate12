@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import type { MenuItem } from '../../types';
+import type { MenuItem, OrderType, OrderedBy } from '../../types';
 import { ShoppingCart, Plus, Minus, CreditCard, Banknote, QrCode, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,6 +14,14 @@ const Menu = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'counter' | 'qr' | 'card'>('counter');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Delivery States
+  const [orderType, setOrderType] = useState<OrderType>('canteen_pickup');
+  const [orderedBy, setOrderedBy] = useState<OrderedBy>('student');
+  const [building, setBuilding] = useState('');
+  const [roomNumber, setRoomNumber] = useState('');
+  const [locationType, setLocationType] = useState('Classroom');
+  const [notes, setNotes] = useState('');
 
   const categories = ['All', ...Array.from(new Set(menuItems.map(m => m.category)))];
 
@@ -60,10 +68,12 @@ const Menu = () => {
         price: c.item.price
       }));
       
+      const extras = { orderType, orderedBy, building, roomNumber, locationType, notes };
+      
       if (paymentMethod === 'counter') {
-        await placeOrder(currentUser.id, orderItems, totalAmount, 'counter', 'pending', 'awaiting_payment');
+        await placeOrder(currentUser.id, orderItems, totalAmount, 'counter', 'pending', 'awaiting_payment', extras);
       } else {
-        await placeOrder(currentUser.id, orderItems, totalAmount, paymentMethod, 'completed', 'pending');
+        await placeOrder(currentUser.id, orderItems, totalAmount, paymentMethod, 'completed', 'pending', extras);
       }
       
       setCart([]);
@@ -189,6 +199,53 @@ const Menu = () => {
 
           {cart.length > 0 && (
             <div className="mt-6 pt-6 border-t border-white/10">
+              {/* Delivery Options */}
+              <div className="mb-6 space-y-4">
+                <h3 className="font-bold text-sm text-textMuted uppercase tracking-wider">Delivery Option</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button onClick={() => setOrderType('canteen_pickup')} className={`p-2 rounded-lg text-sm font-medium border transition-all ${orderType === 'canteen_pickup' ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}>Pickup</button>
+                  <button onClick={() => setOrderType('seat_delivery')} className={`p-2 rounded-lg text-sm font-medium border transition-all ${orderType === 'seat_delivery' ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}>Seat</button>
+                  <button onClick={() => setOrderType('classroom_delivery')} className={`p-2 rounded-lg text-sm font-medium border transition-all ${orderType === 'classroom_delivery' ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}>Classroom</button>
+                </div>
+
+                {orderType === 'classroom_delivery' && (
+                  <div className="p-4 bg-black/20 rounded-xl space-y-4 border border-white/5 mt-3 animate-fade-in shadow-inner">
+                    <div>
+                      <label className="text-xs text-textMuted font-medium block mb-1">Ordered By</label>
+                      <div className="flex bg-white/5 rounded-lg p-1">
+                        <button onClick={() => setOrderedBy('student')} className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${orderedBy === 'student' ? 'bg-white/10 text-white shadow-xs' : 'text-textMuted hover:text-white'}`}>Student</button>
+                        <button onClick={() => setOrderedBy('teacher')} className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${orderedBy === 'teacher' ? 'bg-white/10 text-white shadow-xs' : 'text-textMuted hover:text-white'}`}>Teacher</button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-textMuted font-medium block mb-1">Building/Block</label>
+                        <input value={building} onChange={(e) => setBuilding(e.target.value)} type="text" placeholder="e.g. Block A" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-primary focus:ring-1 focus:ring-primary transition-all text-white" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-textMuted font-medium block mb-1">Room No.</label>
+                        <input value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} type="text" placeholder="e.g. 204" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-primary focus:ring-1 focus:ring-primary transition-all text-white" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-textMuted font-medium block mb-1">Loc. Type</label>
+                        <select value={locationType} onChange={(e) => setLocationType(e.target.value)} className="w-full bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-primary focus:ring-1 focus:ring-primary transition-all text-white [&>option]:bg-surface">
+                          <option>Classroom</option>
+                          <option>Staff Room</option>
+                          <option>HOD Cabin</option>
+                          <option>Lab</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-textMuted font-medium block mb-1">Notes</label>
+                        <input value={notes} onChange={(e) => setNotes(e.target.value)} type="text" placeholder="Opt." className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-primary focus:ring-1 focus:ring-primary transition-all text-white" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-between items-center mb-6">
                 <span className="text-textMuted font-medium">Total Amount</span>
                 <span className="text-2xl font-bold text-white">₹{totalAmount}</span>

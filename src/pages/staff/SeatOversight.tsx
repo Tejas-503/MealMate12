@@ -12,7 +12,7 @@ const TIME_SLOTS: { label: string; value: TimeSlot }[] = [
 ];
 
 const SeatOversight = () => {
-  const { bookings } = useAppStore();
+  const { bookings, cancelBooking } = useAppStore();
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot>('1-3');
   const [date] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -84,16 +84,25 @@ const SeatOversight = () => {
                 const seatNo = i + 1;
                 const booking = activeBookings.find(b => b.seatNumber === seatNo);
                 const isBooked = !!booking;
+                
+                const handleSeatClick = () => {
+                  if (isBooked && booking) {
+                    if (window.confirm(`Are you sure you want to cancel the booking for Seat ${seatNo}?`)) {
+                      cancelBooking(booking.id);
+                    }
+                  }
+                };
 
                 return (
                   <div
                     key={seatNo}
-                    title={isBooked ? `Booked by User ID: ${booking.userId}` : `Seat ${seatNo} Available`}
+                    onClick={handleSeatClick}
+                    title={isBooked ? `Booked by User ID: ${booking.userId} (Click to Cancel)` : `Seat ${seatNo} Available`}
                     className={clsx(
-                      "aspect-square flex flex-col items-center justify-center rounded-xl font-bold text-sm transition-all duration-300 relative group cursor-help",
+                      "aspect-square flex flex-col items-center justify-center rounded-xl font-bold text-sm transition-all duration-300 relative group",
                       isBooked
-                        ? "bg-red-500/20 text-red-500 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
-                        : "bg-surface text-white/40 border border-white/5"
+                        ? "bg-red-500/20 text-red-500 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)] cursor-pointer hover:bg-red-500/40"
+                        : "bg-surface text-white/40 border border-white/5 cursor-default"
                     )}
                   >
                     {isBooked ? (
