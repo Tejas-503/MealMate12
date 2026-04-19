@@ -25,7 +25,7 @@ const supabase = createClient(
 );
 
 // 1. Create Order Route
-app.post('/api/create-order', async (req, res) => {
+app.post('/api/payment/create-order', async (req, res) => {
   try {
     const { amount, currency = 'INR', receipt } = req.body;
 
@@ -50,7 +50,7 @@ app.post('/api/create-order', async (req, res) => {
 });
 
 // 2. Verify Payment Route
-app.post('/api/verify-payment', async (req, res) => {
+app.post('/api/payment/verify', async (req, res) => {
   try {
     const { 
       razorpay_order_id, 

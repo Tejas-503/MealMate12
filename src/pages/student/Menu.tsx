@@ -100,11 +100,16 @@ const Menu = () => {
         if (!supabaseOrderId) throw new Error("Failed to create order in database");
 
         // 2. Fetch Razorpay order ID from our secure backend
-        const resOrder = await fetch('/api/create-order', {
+        const resOrder = await fetch('/api/payment/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount: totalAmount })
         });
+        
+        const contentType = resOrder.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+           throw new Error("Server configuration error: Endpoint did not return JSON. If on Vercel, ensure api/ directory is deployed correctly.");
+        }
         
         const orderData = await resOrder.json();
         if (!orderData.success) throw new Error(orderData.message || "Failed to initialize payment");
@@ -154,7 +159,7 @@ const Menu = () => {
             // 4. Secure Verification on Backend
             setIsProcessing(true);
             try {
-              const verifyRes = await fetch('/api/verify-payment', {
+              const verifyRes = await fetch('/api/payment/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -165,20 +170,23 @@ const Menu = () => {
                 })
               });
               
-              const verifyData = await verifyRes.json();
-              if (verifyData.success) {
-                // Done! Order is updated securely by backend
+              const vContentType = verifyRes.headers.get("content-type");
+              if (!vContentType || !vContentType.includes("application/json")) {
+                 throw new Error("Payment verification failed due to server routing misconfiguration.");
+              }
+              
+              const verification = await verifyRes.json();
+              
+              if (verification.success) {
                 setCart([]);
                 setShowPaymentModal(false);
-                setIsProcessing(false);
                 navigate('/student/orders');
               } else {
-                alert('Payment verification failed! Please contact administration.');
-                setIsProcessing(false);
+                throw new Error(verification.message || "Payment verification failed on the server.");
               }
-            } catch (err) {
-              console.error(err);
-              alert('Error connecting to verification server.');
+            } catch (err: any) {
+              alert(err.message || 'Payment verification encountered an unexpected error.');
+            } finally {
               setIsProcessing(false);
             }
           },
