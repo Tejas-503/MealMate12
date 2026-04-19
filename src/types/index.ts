@@ -19,7 +19,7 @@ export interface MenuItem {
 
 export type OrderStatus = 'awaiting_payment' | 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
-export type PaymentMethod = 'counter' | 'qr' | 'card';
+export type PaymentMethod = 'counter' | 'razorpay';
 export type PaymentStatus = 'pending' | 'completed';
 
 export type OrderType = 'canteen_pickup' | 'seat_delivery' | 'classroom_delivery';
@@ -46,6 +46,9 @@ export interface Order {
   roomNumber?: string;
   locationType?: string;
   notes?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
 }
 
 export type TimeSlot = '9-12' | '1-3' | '4-5:30';

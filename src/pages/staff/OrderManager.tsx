@@ -34,7 +34,7 @@ const OrderManager = () => {
       currentUser.id,
       [{ menuItemId: randomItem.id, quantity: 1, price: randomItem.price }],
       randomItem.price,
-      'card',
+      'razorpay',
       'completed',
       'pending',
       isClassroom ? {

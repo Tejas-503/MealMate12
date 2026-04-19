@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import type { MenuItem, OrderType, OrderedBy } from '../../types';
-import { ShoppingCart, Plus, Minus, CreditCard, Banknote, QrCode, X } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, CreditCard, Banknote, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Menu = () => {
@@ -12,7 +12,7 @@ const Menu = () => {
   
   // Payment States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'counter' | 'qr' | 'card'>('counter');
+  const [paymentMethod, setPaymentMethod] = useState<'counter' | 'razorpay'>('counter');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Delivery States
@@ -57,30 +57,157 @@ const Menu = () => {
     setShowPaymentModal(true);
   };
 
-  const confirmPayment = () => {
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      if (document.querySelector('#razorpay-js')) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'razorpay-js';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const confirmPayment = async () => {
     if (!currentUser || cart.length === 0) return;
     setIsProcessing(true);
 
-    setTimeout(async () => {
-      const orderItems = cart.map(c => ({
-        menuItemId: c.item.id,
-        quantity: c.quantity,
-        price: c.item.price
-      }));
-      
-      const extras = { orderType, orderedBy, building, roomNumber, locationType, notes };
-      
-      if (paymentMethod === 'counter') {
+    const orderItems = cart.map(c => ({
+      menuItemId: c.item.id,
+      quantity: c.quantity,
+      price: c.item.price
+    }));
+    
+    const extras = { orderType, orderedBy, building, roomNumber, locationType, notes };
+    
+    if (paymentMethod === 'counter') {
+      setTimeout(async () => {
         await placeOrder(currentUser.id, orderItems, totalAmount, 'counter', 'pending', 'awaiting_payment', extras);
-      } else {
-        await placeOrder(currentUser.id, orderItems, totalAmount, paymentMethod, 'completed', 'pending', extras);
+        setCart([]);
+        setIsProcessing(false);
+        setShowPaymentModal(false);
+        navigate('/student/orders');
+      }, 500);
+    } else if (paymentMethod === 'razorpay') {
+      try {
+        // 1. Create order in our database as awaiting_payment
+        const supabaseOrderId = await placeOrder(currentUser.id, orderItems, totalAmount, 'razorpay', 'pending', 'awaiting_payment', extras);
+        
+        if (!supabaseOrderId) throw new Error("Failed to create order in database");
+
+        // 2. Fetch Razorpay order ID from our secure backend
+        const resOrder = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: totalAmount })
+        });
+        
+        const orderData = await resOrder.json();
+        if (!orderData.success) throw new Error(orderData.message || "Failed to initialize payment");
+
+        // 3. Load Razorpay SDK window
+        const isLoaded = await loadRazorpay();
+        if (!isLoaded) {
+          alert('Failed to load Razorpay SDK. Are you online?');
+          setIsProcessing(false);
+          return;
+        }
+
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SfGtVz1qtTYbdF', 
+          amount: orderData.amount,
+          currency: orderData.currency,
+          order_id: orderData.order_id,
+          name: 'MealMate',
+          description: 'Delicious Food Delivery',
+          // Optionally force UPI rendering if backend allows it:
+          config: {
+            display: {
+              blocks: {
+                upi: {
+                  name: "Pay via UPI",
+                  instruments: [
+                    { method: "upi" }
+                  ]
+                },
+                other: {
+                  name: "Other Payment Modes",
+                  instruments: [
+                    { method: "card" },
+                    { method: "netbanking" },
+                    { method: "wallet" },
+                    { method: "paylater" }
+                  ]
+                }
+              },
+              sequence: ["block.upi", "block.other"],
+              preferences: {
+                show_default_blocks: true
+              }
+            }
+          },
+          handler: async function (response: any) {
+            // 4. Secure Verification on Backend
+            setIsProcessing(true);
+            try {
+              const verifyRes = await fetch('/api/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  supabase_order_id: supabaseOrderId
+                })
+              });
+              
+              const verifyData = await verifyRes.json();
+              if (verifyData.success) {
+                // Done! Order is updated securely by backend
+                setCart([]);
+                setShowPaymentModal(false);
+                setIsProcessing(false);
+                navigate('/student/orders');
+              } else {
+                alert('Payment verification failed! Please contact administration.');
+                setIsProcessing(false);
+              }
+            } catch (err) {
+              console.error(err);
+              alert('Error connecting to verification server.');
+              setIsProcessing(false);
+            }
+          },
+          prefill: {
+            name: currentUser.fullName,
+            email: currentUser.email,
+            contact: '9999999999'
+          },
+          theme: { color: '#3b82f6' },
+          modal: {
+            ondismiss: function() {
+              setIsProcessing(false);
+            }
+          }
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.on('payment.failed', function (response: any) {
+          alert('Payment failed: ' + response.error.description);
+          setIsProcessing(false);
+        });
+        paymentObject.open();
+
+      } catch (err: any) {
+        console.error(err);
+        alert(err.message || 'Payment initialization failed.');
+        setIsProcessing(false);
       }
-      
-      setCart([]);
-      setIsProcessing(false);
-      setShowPaymentModal(false);
-      navigate('/student/orders');
-    }, paymentMethod === 'counter' ? 500 : 2500); // Simulate network/payment delay for online
+    }
   };
 
   return (
@@ -299,44 +426,18 @@ const Menu = () => {
               </button>
 
               <button
-                onClick={() => setPaymentMethod('qr')}
-                className={`p-4 rounded-xl border flex items-center gap-4 transition-all ${paymentMethod === 'qr' ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 hover:border-gray-300 dark:hover:border-white/20'}`}
+                onClick={() => setPaymentMethod('razorpay')}
+                className={`p-4 rounded-xl border flex items-center gap-4 transition-all ${paymentMethod === 'razorpay' ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 hover:border-gray-300 dark:hover:border-white/20'}`}
                 disabled={isProcessing}
               >
-                <div className={`p-3 rounded-lg flex shrink-0 ${paymentMethod === 'qr' ? 'bg-primary/20 text-primary' : 'bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white'}`}>
-                  <QrCode size={24} />
-                </div>
-                <div className="text-left flex-1">
-                  <h4 className="font-bold text-gray-900 dark:text-white">Pay with QR Online</h4>
-                  <p className="text-sm text-gray-500 dark:text-textMuted">Scan and pay instantly</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setPaymentMethod('card')}
-                className={`p-4 rounded-xl border flex items-center gap-4 transition-all ${paymentMethod === 'card' ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 hover:border-gray-300 dark:hover:border-white/20'}`}
-                disabled={isProcessing}
-              >
-                <div className={`p-3 rounded-lg flex shrink-0 ${paymentMethod === 'card' ? 'bg-primary/20 text-primary' : 'bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white'}`}>
+                <div className={`p-3 rounded-lg flex shrink-0 ${paymentMethod === 'razorpay' ? 'bg-primary/20 text-primary' : 'bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white'}`}>
                   <CreditCard size={24} />
                 </div>
                 <div className="text-left flex-1">
-                  <h4 className="font-bold text-gray-900 dark:text-white">Pay with Card</h4>
-                  <p className="text-sm text-gray-500 dark:text-textMuted">Credit or Debit card</p>
+                  <h4 className="font-bold text-gray-900 dark:text-white">Pay with Razorpay</h4>
+                  <p className="text-sm text-gray-500 dark:text-textMuted">Secure online payment</p>
                 </div>
               </button>
-              
-              {paymentMethod === 'qr' && (
-                <div className="mt-2 p-6 bg-white rounded-xl flex flex-col items-center justify-center animate-fade-in border-4 border-white">
-                  <div className="w-48 h-48 bg-gray-100 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-gray-300 relative overflow-hidden text-center p-4">
-                    {/* Add your real image path here instead of the icon, e.g.: */}
-                    {/* <img src="/my-qr-code.png" className="w-full h-full object-cover" /> */}
-                    <QrCode size={48} className="text-gray-400 mb-2" />
-                    <p className="text-xs text-gray-500 font-medium">To use a real QR, put image in `public/` and edit Menu.tsx.</p>
-                  </div>
-                  <p className="text-black font-bold mt-4">Scan to pay ₹{totalAmount}</p>
-                </div>
-              )}
             </div>
             
             <div className="p-6 border-t border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-black/20">

@@ -36,7 +36,7 @@ interface AppState {
       locationType?: string;
       notes?: string;
     }
-  ) => Promise<void>;
+  ) => Promise<string | undefined>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   updateOrderPaymentAndStatus: (orderId: string, status: Order['status'], paymentStatus: Order['paymentStatus']) => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
@@ -208,10 +208,13 @@ export const useAppStore = create<AppState>()(
       
       orders: [],
       placeOrder: async (userId, items, totalAmount, paymentMethod, paymentStatus, status, extras) => {
-        await supabase.from('orders').insert({
+        const mappedPaymentMethod = paymentMethod === 'razorpay' ? 'card' : paymentMethod;
+        
+        // Step 1: Insert without selecting if RLS blocks it
+        const { error: insertError } = await supabase.from('orders').insert({
           user_id: userId,
           items,
-          payment_method: paymentMethod,
+          payment_method: mappedPaymentMethod,
           payment_status: paymentStatus,
           status: status,
           total_amount: totalAmount,
@@ -222,7 +225,23 @@ export const useAppStore = create<AppState>()(
           location_type: extras?.locationType,
           notes: extras?.notes
         });
+        
+        if (insertError) {
+          console.error("Supabase insert error:", insertError);
+          alert(`DB Error: ${insertError.message}`);
+          return undefined;
+        }
+        
+        // Step 2: Fetch the latest inserted order explicitly to avoid RLS select-on-insert issues
+        const { data: latestOrder } = await supabase.from('orders')
+          .select('id')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
         await get().fetchInitialData();
+        return latestOrder?.id;
       },
       updateOrderStatus: async (orderId, status) => {
         await supabase.from('orders').update({ status }).eq('id', orderId);
