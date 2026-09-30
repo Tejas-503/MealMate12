@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "server": "node server.js",
-    "dev": "concurrently \"npm run server\" \"vite\"",
+    "client": "vite",
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,magenta\" npm:server npm:client",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

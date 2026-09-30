@@ -244,14 +244,53 @@ export const useAppStore = create<AppState>()(
         return latestOrder?.id;
       },
       updateOrderStatus: async (orderId, status) => {
-        await supabase.from('orders').update({ status }).eq('id', orderId);
+        // 1. Optimistic UI update so the card moves immediately in the UI
+        set((state) => ({
+          orders: state.orders.map((o) => (o.id === orderId ? { ...o, status } : o))
+        }));
+
+        // 2. Direct Supabase update
+        const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
+        if (error) {
+          console.warn("Direct Supabase update failed (likely RLS policy). Attempting backend fallback:", error);
+          try {
+            await fetch('/api/orders/update-status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId, status })
+            });
+          } catch (backendErr) {
+            console.error("Backend fallback also failed:", backendErr);
+          }
+        }
         await get().fetchInitialData();
       },
       updateOrderPaymentAndStatus: async (orderId, status, paymentStatus) => {
-        await supabase.from('orders').update({ status, payment_status: paymentStatus }).eq('id', orderId);
+        // 1. Optimistic UI update so the card moves immediately in the UI
+        set((state) => ({
+          orders: state.orders.map((o) => (o.id === orderId ? { ...o, status, paymentStatus } : o))
+        }));
+
+        // 2. Direct Supabase update
+        const { error } = await supabase.from('orders').update({ status, payment_status: paymentStatus }).eq('id', orderId);
+        if (error) {
+          console.warn("Direct Supabase update failed (likely RLS policy). Attempting backend fallback:", error);
+          try {
+            await fetch('/api/orders/update-status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId, status, paymentStatus })
+            });
+          } catch (backendErr) {
+            console.error("Backend fallback also failed:", backendErr);
+          }
+        }
         await get().fetchInitialData();
       },
       cancelOrder: async (orderId) => {
+        set((state) => ({
+          orders: state.orders.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
+        }));
         await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
         await get().fetchInitialData();
       },

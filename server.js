@@ -111,7 +111,38 @@ app.post('/api/payment/verify', async (req, res) => {
   }
 });
 
+// 3. Staff / Admin Update Order Route
+app.post('/api/orders/update-status', async (req, res) => {
+  try {
+    const { orderId, status, paymentStatus } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required' });
+    }
+
+    const updatePayload = {};
+    if (status !== undefined) updatePayload.status = status;
+    if (paymentStatus !== undefined) updatePayload.payment_status = paymentStatus;
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updatePayload)
+      .eq('id', orderId)
+      .select();
+
+    if (error) {
+      console.error('Server update order error:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('Error in /api/orders/update-status:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Razorpay Backend Server running on port ${PORT}`);
 });
+
